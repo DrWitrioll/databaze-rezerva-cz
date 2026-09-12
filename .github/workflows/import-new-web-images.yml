@@ -1,0 +1,46 @@
+name: Import new web images
+on:
+  push:
+    branches: [image-deploy-20260912]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and extract images
+        run: |
+          python - <<'PY'
+          import urllib.request, json, zipfile, io, os
+          api='https://api.firestorage.ai/prod/file'
+          share='YDQVlNDUD_b8'
+          with urllib.request.urlopen(f'{api}/shares/{share}/files?maxResults=1000') as r:
+              listing=json.loads(r.read().decode('utf-8'))
+          files=listing.get('files') or []
+          if not files:
+              raise SystemExit('No files in share')
+          f=files[0]
+          req=urllib.request.Request(f"{api}/shares/{share}/files/{f['fileId']}/download", method='POST')
+          with urllib.request.urlopen(req) as r:
+              obj=json.loads(r.read().decode('utf-8'))
+          with urllib.request.urlopen(obj['downloadUrl']) as r:
+              data=r.read()
+          z=zipfile.ZipFile(io.BytesIO(data))
+          os.makedirs('deploy/new-web-images', exist_ok=True)
+          z.extractall('deploy/new-web-images')
+          expected=['oskn-emblem-blue.png','kn-emblem-red.png','jzd-guard.png','experimental-rocket-plane.png','three-headed-dragon.png']
+          for name in expected:
+              p='deploy/new-web-images/'+name
+              if not os.path.exists(p):
+                  raise SystemExit('Missing '+p)
+              print(name, os.path.getsize(p))
+          PY
+      - name: Commit images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/new-web-images
+          git commit -m "Stage new web images" || exit 0
+          git push
