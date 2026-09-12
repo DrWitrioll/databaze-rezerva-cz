@@ -1,0 +1,40 @@
+name: Fix Prouzek card
+on:
+  push:
+    branches: [image-deploy-20260912]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch production HTML
+        run: |
+          python - <<'PY'
+          import urllib.request
+          url='https://res.cloudinary.com/emmgrwto/raw/upload/rezervni-posadka/site-final.html'
+          text=urllib.request.urlopen(url).read().decode('utf-8')
+          old='''<span class="label green">obrazový záznam // identita neurčena</span>\n<h3>Osobnost v oranžovém obleku</h3>\n<p>Archivní snímek zachycuje výraznou osobnost v oranžovém ochranném obleku se symbolikou NII. Jméno ani přesná funkce postavy nejsou z dostupného obrazového podkladu určeny, proto je databáze nedoplňuje odhadem.</p>\n<p>Snímek zůstává v palubním deníku jako vizuální záznam atmosféry a interiéru NII.</p>\n<div class="badges"><span class="badge o">identita neurčena</span><span class="badge">NII</span><span class="badge">interiér lodi</span><span class="badge">obrazový archiv</span></div>'''
+          new='''<span class="label green">obrazový záznam // Proužek</span>\n<h3>Proužek</h3>\n<p>Archivní snímek zachycuje Proužka v oranžovém ochranném obleku se symbolikou NII. Jde o výraznou a jasně rozpoznatelnou osobnost palubního prostředí.</p>\n<p>Snímek zůstává v palubním deníku jako vizuální záznam atmosféry, interiéru lodi a přítomnosti Proužka na palubě NII.</p>\n<div class="badges"><span class="badge o">Proužek</span><span class="badge">NII</span><span class="badge">interiér lodi</span><span class="badge">obrazový archiv</span></div>'''
+          if old not in text:
+              raise SystemExit('Target text block not found')
+          text=text.replace(old,new,1)
+          old_img='<img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789214421/rezervni-posadka/stanicni-osobnost.png" alt="Výrazná osobnost v oranžovém obleku se symbolikou NII" loading="lazy"><span class="caption">NII // PALUBNÍ OSOBNOST</span>'
+          new_img='<img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789214421/rezervni-posadka/stanicni-osobnost.png" alt="Proužek v oranžovém obleku se symbolikou NII" loading="lazy"><span class="caption">NII // PROUŽEK</span>'
+          if old_img not in text:
+              raise SystemExit('Target image block not found')
+          text=text.replace(old_img,new_img,1)
+          assert 'identita neurčena' not in text
+          assert '<h3>Proužek</h3>' in text
+          assert 'NII // PROUŽEK' in text
+          open('deploy/site-final-prouzek-fixed.html','w',encoding='utf-8').write(text)
+          PY
+      - name: Commit patched HTML
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/site-final-prouzek-fixed.html
+          git commit -m "Identify Prouzek in logbook card" || exit 0
+          git push
