@@ -1,0 +1,48 @@
+name: Build site with new image cards
+on:
+  push:
+    branches: [image-deploy-20260912]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch current production HTML
+        run: |
+          python - <<'PY'
+          import urllib.request
+          url='https://res.cloudinary.com/emmgrwto/raw/upload/rezervni-posadka/site-final.html'
+          text=urllib.request.urlopen(url).read().decode('utf-8')
+          if 'OSKN // EMBLÉM' in text:
+              raise SystemExit('New cards already present')
+          marker='</div>\n</section>\n<section class="page" id="diplomacy">'
+          cards='''</div>
+          <div class="grid">
+          <article class="card full"><span class="label green">rozšířený obrazový archiv</span><h3>Nově přidané obrazové záznamy</h3><p>Do terminálu byly doplněny další vizuální karty: symbolické znaky, pozemní hlídkový profil, experimentální letecký stroj a bestiární záznam tříhlavého draka. Jde o samostatný obrazový archiv určený pro rychlou orientaci a atmosférické doplnění databáze.</p></article>
+          <article class="card full hero-card"><div class="hero-copy"><span class="label">symbolika // OSKN</span><h3>Emblém OSKN</h3><p>Modře laděný emblém OSKN využívá industriální kompozici ozubeného kola a kruhového pole se stylizovaným středovým znakem. Oprýskaná textura a kontrast černé, bílé a modré vytvářejí tvrdý propagandistický a archivní vizuál.</p><div class="badges"><span class="badge o">OSKN</span><span class="badge">symbolika</span><span class="badge">insignie</span><span class="badge">obrazový archiv</span></div></div><div class="media contain lightbox"><img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789218199/rezervni-posadka/oskn-emblem-blue.png" alt="Modrý emblém OSKN" loading="lazy"><span class="caption">OSKN // EMBLÉM</span></div></article>
+          <article class="card full hero-card"><div class="hero-copy"><span class="label red">symbolika // KN</span><h3>Emblém KN</h3><p>Červeně laděný znak KN pracuje se stejnou industriální estetikou, ale působí úderněji a agresivněji. Ozubené kolo, centrální kruh a zkratka KN jsou zpracovány jako výrazný identifikační symbol do propagandy, výstroje i technického značení.</p><div class="badges"><span class="badge o">KN</span><span class="badge">symbolika</span><span class="badge">identifikační znak</span><span class="badge">obrazový archiv</span></div></div><div class="media contain lightbox"><img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789218210/rezervni-posadka/kn-emblem-red.png" alt="Červený emblém KN" loading="lazy"><span class="caption">KN // EMBLÉM</span></div></article>
+          <article class="card full hero-card"><div class="hero-copy"><span class="label">pozemní archiv // JZD</span><h3>Strážce u brány JZD</h3><p>Snímek zachycuje ozbrojeného strážce stojícího u oplocené brány zemědělského družstva. Výstroj kombinuje improvizovanou ochranu, helmu, ochranné brýle, dlouhé kopí a velký štít, což vytváří výrazně postapokalyptický a terénní charakter záznamu.</p><div class="badges"><span class="badge o">JZD</span><span class="badge">pozemní hlídka</span><span class="badge">štít</span><span class="badge">kopí</span></div></div><div class="media lightbox"><img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789218222/rezervni-posadka/jzd-guard.png" alt="Strážce u brány JZD se štítem a kopím" loading="lazy"><span class="caption">JZD // STRÁŽCE U BRÁNY</span></div></article>
+          <article class="card full hero-card"><div class="hero-copy"><span class="label red">letecký archiv</span><h3>Experimentální raketový letoun</h3><p>Vizuální záznam ukazuje jednomístný letoun s červenými hvězdami, robustně upravenou pohonnou sekcí a dvojicí jasně zářících trysek. Konstrukce spojuje klasický tvar vrtulového stroje s agresivně přestavěným futuristickým pohonem a působí jako experimentální útočný nebo přepadový typ.</p><div class="badges"><span class="badge o">letectvo</span><span class="badge">experimentální stroj</span><span class="badge">červené hvězdy</span><span class="badge">raketový pohon</span></div></div><div class="media lightbox"><img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789218239/rezervni-posadka/experimental-rocket-plane.png" alt="Experimentální raketový letoun s červenými hvězdami" loading="lazy"><span class="caption">LETECKÝ ARCHIV // EXPERIMENTÁLNÍ STROJ</span></div></article>
+          <article class="card full hero-card"><div class="hero-copy"><span class="label red">bestiář // vzdušná hrozba</span><h3>Tříhlavý drak</h3><p>Bestiární záznam zachycuje masivního tříhlavého draka s potrhanými křídly, výrazným rohováním a silně pancéřovaným šupinatým tělem. Tvor se vznáší nad rozsáhlou krajinou a představuje vysoce nebezpečnou vzdušnou hrozbu s výrazným vizuálním profilem.</p><div class="badges"><span class="badge o">drak</span><span class="badge">tři hlavy</span><span class="badge">vzdušná hrozba</span><span class="badge">bestiář</span></div></div><div class="media lightbox"><img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789218252/rezervni-posadka/three-headed-dragon.png" alt="Tříhlavý drak nad krajinou" loading="lazy"><span class="caption">BESTIÁŘ // TŘÍHLAVÝ DRAK</span></div></article>
+          </div>
+          </section>
+          <section class="page" id="diplomacy">'''
+          if marker not in text:
+              raise SystemExit('Archive insertion marker not found')
+          text=text.replace(marker,cards,1)
+          required=['<h3>Proužek</h3>','NII // PROUŽEK','OSKN // EMBLÉM','KN // EMBLÉM','JZD // STRÁŽCE U BRÁNY','LETECKÝ ARCHIV // EXPERIMENTÁLNÍ STROJ','BESTIÁŘ // TŘÍHLAVÝ DRAK','10 odpalovacích pozic','232']
+          for s in required:
+              assert s in text, 'Missing '+s
+          open('deploy/site-final-new-images.html','w',encoding='utf-8').write(text)
+          print('HTML chars',len(text))
+          PY
+      - name: Commit built HTML
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/site-final-new-images.html
+          git commit -m "Build production HTML with new image cards" || exit 0
+          git push
