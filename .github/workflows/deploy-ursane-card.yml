@@ -1,0 +1,49 @@
+name: Deploy Ursane card
+on:
+  push:
+    branches: [image-deploy-20260912]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build from current production HTML
+        run: |
+          python - <<'PY'
+          import urllib.request
+          src='https://res.cloudinary.com/emmgrwto/raw/upload/v1789219269/rezervni-posadka/site-final.html'
+          html=urllib.request.urlopen(src).read().decode('utf-8')
+          if 'URSANÉ // NOVÝ DRUH' not in html:
+              marker='<article class="card"><span class="label">členové NII</span><h3>Ještěřané</h3><p>Do první skupiny patřilo 20 ještěřanů a při pozdější evakuaci přibylo dalších 30.</p><div class="badges"><span class="badge o">50 na NII</span><span class="badge">vycvičené obory</span></div></article>'
+              card='''<article class="card full hero-card">
+<div class="hero-copy">
+<span class="label green">nový druh</span>
+<h3>Ursané</h3>
+<p>Ursané jsou nově zavedený inteligentní druh medvědích humanoidů. Vizuální záznam ukazuje mohutně stavěného příslušníka tohoto druhu s kožešinou, šamansky laděným oděvem, přírodními amulety a symbolikou spojenou s krajinou a kamenem.</p>
+<p>Databáze je v této fázi vede jako samostatný druh. Přesný počet, původní domovina a vztah k NII budou doplněny až podle dalších potvrzených informací.</p>
+<div class="badges"><span class="badge o">Ursané</span><span class="badge">medvědí humanoidi</span><span class="badge">nový druh</span><span class="badge">počet zatím neurčen</span></div>
+</div>
+<div class="media lightbox"><img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789222542/rezervni-posadka/ursane.png" alt="Příslušník druhu Ursané v horské krajině" loading="lazy"><span class="caption">URSANÉ // NOVÝ DRUH</span></div>
+</article>'''
+              if marker not in html:
+                  raise SystemExit('Ursane card insertion marker not found')
+              html=html.replace(marker, marker+'\n'+card, 1)
+              row='<tr><td><strong>Ještěřané</strong></td><td>mezirasová civilizace</td><td><b>50</b></td></tr>'
+              urs='<tr><td><strong>Ursané</strong></td><td>medvědí humanoidní druh; mohutná postava, kožešina, kmenová a přírodní symbolika</td><td><span class="state unk">zatím neurčeno</span></td></tr>'
+              if row in html:
+                  html=html.replace(row,row+urs,1)
+          assert 'URSANÉ // NOVÝ DRUH' in html
+          assert 'TŘÍHLAVÝ DRAK' not in html
+          open('site-final-ursane-production.html','w',encoding='utf-8').write(html)
+          print('HTML_BYTES',len(html.encode('utf-8')))
+          PY
+      - name: Commit production candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site-final-ursane-production.html
+          git commit -m "Add Ursane species card" || exit 0
+          git push
