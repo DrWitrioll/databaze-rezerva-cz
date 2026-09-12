@@ -1,0 +1,59 @@
+name: Import final image HTML
+on:
+  push:
+    branches: [image-deploy-20260912]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download final HTML from temporary share
+        run: |
+          python - <<'PY'
+          import urllib.request, json
+          api='https://api.firestorage.ai/prod/file'
+          share='p6H0tYTCmwzR'
+          with urllib.request.urlopen(f'{api}/shares/{share}/files?maxResults=1000') as r:
+              listing=json.loads(r.read().decode('utf-8'))
+          files=listing.get('files') or []
+          if not files: raise SystemExit('No files in share')
+          f=files[0]
+          endpoint=f"{api}/shares/{share}/files/{f['fileId']}/download"
+          req=urllib.request.Request(endpoint, method='POST')
+          with urllib.request.urlopen(req) as r:
+              obj=json.loads(r.read().decode('utf-8'))
+          with urllib.request.urlopen(obj['downloadUrl']) as r:
+              body=r.read()
+          text=body.decode('utf-8')
+          required=[
+            '232 evidovaných / 230 fyzických',
+            '50 kočko-lidí',
+            '50 pso-lidí',
+            '60 trpaslíků',
+            '50 ještěřanů',
+            'rezervni-posadka/posadka-nii-velka.png',
+            'rezervni-posadka/havel-sektor-b3.png',
+            'rezervni-posadka/heliorske-sestry.png',
+            'rezervni-posadka/kaelith-portret.png',
+            'rezervni-posadka/kredity-nominaly.png',
+            'rezervni-posadka/kredit-detail.png',
+            'rezervni-posadka/stanicni-osobnost.png',
+            '10 odpalovacích pozic',
+            '20ranný akumulační zásobník'
+          ]
+          for s in required:
+              assert s in text, 'Missing: '+s
+          assert 'web-assets/' not in text
+          open('deploy/site-final-production.html','wb').write(body)
+          print('HTML_BYTES',len(body))
+          PY
+      - name: Commit production HTML
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/site-final-production.html
+          git commit -m "Stage production HTML with Cloudinary images" || exit 0
+          git push
