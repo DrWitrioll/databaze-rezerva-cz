@@ -1,5 +1,5 @@
 {
-  "buildCommand": "python3 scripts/update_full_site_20260913.py && python3 scripts/add_three_images_20260913.py",
+  "buildCommand": "python3 scripts/update_full_site_20260913.py && python3 scripts/add_three_images_20260913.py && python3 scripts/mark_owen_dead_20260913.py",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false
