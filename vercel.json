@@ -1,0 +1,6 @@
+{
+  "buildCommand": "python3 scripts/update_full_site_20260913.py && mkdir -p dist && cp site-full-update-20260913.html dist/index.html",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false
+}
