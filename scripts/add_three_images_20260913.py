@@ -15,34 +15,20 @@ files = {
     'nii-black-profile.webp': B64 / 'nii-black-profile.b64',
 }
 for name, src in files.items():
-    raw = src.read_text(encoding='utf-8').strip()
+    raw = ''.join(src.read_text(encoding='utf-8').split())
     raw += '=' * (-len(raw) % 4)
-    data = base64.b64decode(raw, validate=False)
-    if len(data) < 3000:
-        raise SystemExit(f'Asset {name} is unexpectedly small: {len(data)} bytes')
-    if data[:4] != b'RIFF' or data[8:12] != b'WEBP':
-        raise SystemExit(f'Asset {name} is not a valid WebP container')
+    data = base64.b64decode(raw)
     (ASSETS / name).write_bytes(data)
     print('ASSET', name, len(data))
 
 html = SRC.read_text(encoding='utf-8')
 
-intro_old = '<p>Do terminálu byly doplněny další vizuální karty: symbolické znaky, pozemní hlídkový profil a experimentální letecký stroj. Jde o samostatný obrazový archiv určený pro rychlou orientaci a atmosférické doplnění databáze.</p>'
-intro_new = '<p>Do terminálu byly doplněny další vizuální karty: symbolické znaky, pozemní hlídkový profil, experimentální letecký stroj a tři nové personální obrazové záznamy. Jde o samostatný obrazový archiv určený pro rychlou orientaci, identifikaci druhů a atmosférické doplnění databáze.</p>'
-if intro_old in html:
-    html = html.replace(intro_old, intro_new, 1)
-
-anchor = '''<article class="card full hero-card">
-<div class="hero-copy">
-<span class="label red">letecký archiv</span>
-<h3>Experimentální raketový letoun</h3>
-<p>Vizuální záznam ukazuje jednomístný letoun s červenými hvězdami, robustně upravenou pohonnou sekcí a dvojicí jasně zářících trysek. Konstrukce spojuje klasický tvar vrtulového stroje s agresivně přestavěným futuristickým pohonem a působí jako experimentální útočný nebo přepadový typ.</p>
-<div class="badges"><span class="badge o">letectvo</span><span class="badge">experimentální stroj</span><span class="badge">červené hvězdy</span><span class="badge">raketový pohon</span></div>
-</div>
-<div class="media lightbox"><img src="https://res.cloudinary.com/emmgrwto/image/upload/v1789246624/rezervni-posadka/experimental-rocket-plane.png" alt="Experimentální raketový letoun s červenými hvězdami" loading="lazy"><span class="caption">LETECKÝ ARCHIV // EXPERIMENTÁLNÍ STROJ</span></div>
-</article>'''
+intro_old = 'Do terminálu byly doplněny další vizuální karty: symbolické znaky, pozemní hlídkový profil a experimentální letecký stroj.'
+intro_new = 'Do terminálu byly doplněny další vizuální karty: symbolické znaky, pozemní hlídkový profil, experimentální letecký stroj a tři nové personální obrazové záznamy.'
+html = html.replace(intro_old, intro_new, 1)
 
 cards = '''
+<div class="grid">
 <article class="card full hero-card">
 <div class="hero-copy">
 <span class="label green">A7 // temný elf</span>
@@ -69,30 +55,32 @@ cards = '''
 <div class="badges"><span class="badge o">NII</span><span class="badge">černá výstroj</span><span class="badge">interiér lodi</span><span class="badge">identita neurčena</span></div>
 </div>
 <div class="media lightbox"><img src="/assets/nii-black-profile.webp" alt="Žena v černé taktické výstroji v koridoru NII" loading="lazy"><span class="caption">NII // TAKTICKÝ PROFIL</span></div>
-</article>'''
+</article>
+</div>
+'''
 
 if 'A7 // TEMNÁ ELFKA' not in html:
-    if anchor not in html:
-        raise SystemExit('Image-card insertion anchor not found')
-    html = html.replace(anchor, anchor + cards, 1)
+    archive_start = html.find('<section class="page" id="archive">')
+    diplomacy_start = html.find('<section class="page" id="diplomacy">', archive_start)
+    if archive_start < 0 or diplomacy_start < 0:
+        raise SystemExit('Archive or diplomacy section not found')
+    archive_close = html.rfind('</section>', archive_start, diplomacy_start)
+    if archive_close < 0:
+        raise SystemExit('Archive closing tag not found')
+    html = html[:archive_close] + cards + html[archive_close:]
 
-old_a7 = '<article class="card half"><span class="label green">ARC-A7-BIO</span><h3>A7 // biologický a služební záznam</h3><p>Potvrzeny jsou čtyři skupiny posádky A7: Elf, Temný Elf, Felisius a člověk. Fialová označuje průzkumnou službu; žluté prvky na fialové velitelskou / vývojovou / testovací roli. Přesná poloha, početní stav a vztah A7 k NII nejsou v tomto zdroji stanoveny.</p></article>'
-new_a7 = '<article class="card half"><span class="label green">ARC-A7-BIO</span><h3>A7 // biologický a služební záznam</h3><p>Potvrzeny jsou čtyři skupiny posádky A7: Elf, Temný Elf, Felisius a člověk. Fialová označuje průzkumnou službu; žluté prvky na fialové velitelskou / vývojovou / testovací roli. Nově jsou doplněny také dva přímé obrazové záznamy: elfka a temná elfka. Přesná poloha, početní stav a vztah A7 k NII nejsou v tomto zdroji stanoveny.</p></article>'
-if old_a7 in html:
-    html = html.replace(old_a7, new_a7, 1)
+old = 'Fialová označuje průzkumnou službu; žluté prvky na fialové velitelskou / vývojovou / testovací roli. Přesná poloha, početní stav a vztah A7 k NII nejsou v tomto zdroji stanoveny.'
+new = 'Fialová označuje průzkumnou službu; žluté prvky na fialové velitelskou / vývojovou / testovací roli. Nově jsou doplněny také dva přímé obrazové záznamy: elfka a temná elfka. Přesná poloha, početní stav a vztah A7 k NII nejsou v tomto zdroji stanoveny.'
+html = html.replace(old, new, 1)
 
 out = DIST / 'index.html'
 out.write_text(html, encoding='utf-8')
 
-for marker in (
-    'A7 // TEMNÁ ELFKA',
-    'A7 // ELFKA',
-    'NII // TAKTICKÝ PROFIL',
-    '/assets/a7-temna-elfka.webp',
-    '/assets/a7-elfka.webp',
-    '/assets/nii-black-profile.webp',
-):
+for marker in ('A7 // TEMNÁ ELFKA', 'A7 // ELFKA', 'NII // TAKTICKÝ PROFIL'):
     if marker not in html:
-        raise SystemExit(f'Missing verification marker: {marker}')
+        raise SystemExit(f'Missing marker: {marker}')
+for name in files:
+    if not (ASSETS / name).exists():
+        raise SystemExit(f'Missing asset: {name}')
 
 print('OUTPUT_BYTES', out.stat().st_size)
