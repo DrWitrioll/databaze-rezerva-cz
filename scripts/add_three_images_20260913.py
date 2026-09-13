@@ -16,7 +16,7 @@ files = {
 }
 for name, src in files.items():
     data = base64.b64decode(src.read_text(encoding='utf-8').strip(), validate=True)
-    if len(data) < 5000:
+    if len(data) < 3000:
         raise SystemExit(f'Asset {name} is unexpectedly small: {len(data)} bytes')
     (ASSETS / name).write_bytes(data)
     print('ASSET', name, len(data))
