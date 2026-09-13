@@ -15,9 +15,13 @@ files = {
     'nii-black-profile.webp': B64 / 'nii-black-profile.b64',
 }
 for name, src in files.items():
-    data = base64.b64decode(src.read_text(encoding='utf-8').strip(), validate=True)
+    raw = src.read_text(encoding='utf-8').strip()
+    raw += '=' * (-len(raw) % 4)
+    data = base64.b64decode(raw, validate=False)
     if len(data) < 3000:
         raise SystemExit(f'Asset {name} is unexpectedly small: {len(data)} bytes')
+    if data[:4] != b'RIFF' or data[8:12] != b'WEBP':
+        raise SystemExit(f'Asset {name} is not a valid WebP container')
     (ASSETS / name).write_bytes(data)
     print('ASSET', name, len(data))
 
