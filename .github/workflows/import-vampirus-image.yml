@@ -1,0 +1,38 @@
+name: Import Vampirus image
+
+on:
+  push:
+    branches: [vampirus-deploy-20260913]
+    paths:
+      - '.github/workflows/import-vampirus-image.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: vampirus-deploy-20260913
+      - name: Download image from temporary share
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHARE='lHck1BZc_Hoo'
+          FILE_ID='01a09bcd8e0975ebbfb71f53444454d4'
+          mkdir -p assets
+          curl -fsSL "https://api.firestorage.ai/prod/file/shares/${SHARE}/files?maxResults=1000" -o /tmp/list.json
+          DOWNLOAD_URL=$(curl -fsSL -X POST -H 'Content-Type: application/json' -d '{}' "https://api.firestorage.ai/prod/file/shares/${SHARE}/files/${FILE_ID}/download" | python3 -c "import sys,json; o=json.load(sys.stdin); print(o.get('downloadUrl') or o.get('download_url') or o.get('url') or '')")
+          test -n "$DOWNLOAD_URL"
+          curl -fL "$DOWNLOAD_URL" -o assets/vampirus-survivors.png
+          test $(stat -c%s assets/vampirus-survivors.png) -gt 100000
+      - name: Commit image
+        shell: bash
+        run: |
+          git config user.name 'chatgpt-deploy'
+          git config user.email 'actions@users.noreply.github.com'
+          git add assets/vampirus-survivors.png
+          git commit -m 'Add Vampirus survivor image' || exit 0
+          git push origin HEAD:vampirus-deploy-20260913
