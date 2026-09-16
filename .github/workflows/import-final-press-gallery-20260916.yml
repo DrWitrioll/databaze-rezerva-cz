@@ -15,7 +15,7 @@ jobs:
           python - <<'PY'
           import urllib.request, json
           api='https://api.firestorage.ai/prod/file'
-          share='z57vuemCEvWkrYDs'
+          share='8LDtooEG8_1E'
           with urllib.request.urlopen(f'{api}/shares/{share}/files?maxResults=1000') as r:
               listing=json.loads(r.read().decode('utf-8'))
           files=listing.get('files') or []
