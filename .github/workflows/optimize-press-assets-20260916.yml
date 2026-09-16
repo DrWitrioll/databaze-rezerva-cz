@@ -1,0 +1,48 @@
+name: Optimize press assets 2026-09-16
+on:
+  push:
+    branches: [press-gallery-20260916-v2]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check optimization state
+        id: state
+        run: |
+          if [ -f assets/galactic-map-oskn-helios.webp ] && [ -f assets/custodes-med-b4.webp ]; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Convert PNG to WebP
+        if: steps.state.outputs.done != 'true'
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          pairs=[
+            ('assets/galactic-map-oskn-helios.png','assets/galactic-map-oskn-helios.webp'),
+            ('assets/custodes-med-b4.png','assets/custodes-med-b4.webp'),
+          ]
+          for src,dst in pairs:
+              im=Image.open(src).convert('RGB')
+              im.save(dst,'WEBP',quality=78,method=6)
+              print(src,Path(src).stat().st_size,'->',dst,Path(dst).stat().st_size)
+          PY
+          rm assets/galactic-map-oskn-helios.png assets/custodes-med-b4.png
+          sed -i 's/galactic-map-oskn-helios\.png/galactic-map-oskn-helios.webp/g; s/custodes-med-b4\.png/custodes-med-b4.webp/g' scripts/add_press_gallery_20260916.py
+          sed -i 's/galactic-map-oskn-helios\.png/galactic-map-oskn-helios.webp/g; s/custodes-med-b4\.png/custodes-med-b4.webp/g' .github/workflows/test-vercel-build-20260916.yml
+          rm -f .github/workflows/import-press-assets-20260916.yml
+      - name: Commit optimized assets
+        if: steps.state.outputs.done != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Optimize galactic map and Custodes images for deployment"
+          git push
