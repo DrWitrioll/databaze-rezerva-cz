@@ -1,0 +1,64 @@
+name: Import final press gallery HTML 2026-09-16
+on:
+  push:
+    branches: [press-gallery-final-20260916]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact final HTML from temporary share
+        run: |
+          python - <<'PY'
+          import urllib.request, json
+          api='https://api.firestorage.ai/prod/file'
+          share='z57vuemCEvWkrYDs'
+          with urllib.request.urlopen(f'{api}/shares/{share}/files?maxResults=1000') as r:
+              listing=json.loads(r.read().decode('utf-8'))
+          files=listing.get('files') or []
+          if not files:
+              raise SystemExit('No files in share')
+          f=files[0]
+          endpoint=f"{api}/shares/{share}/files/{f['fileId']}/download"
+          req=urllib.request.Request(endpoint, method='POST')
+          with urllib.request.urlopen(req) as r:
+              obj=json.loads(r.read().decode('utf-8'))
+          with urllib.request.urlopen(obj['downloadUrl']) as r:
+              body=r.read()
+          text=body.decode('utf-8')
+          required=[
+            'article-galactic-map',
+            'article-custodes-med',
+            'article-diplomacy-third',
+            'article-protos-singular',
+            'data-tab="pressgallery"',
+            'id="pressgallery"',
+            'Galerie / noviny',
+            '232 evidovaných / 230 fyzických',
+            '50 kočko-lidí',
+            '50 pso-lidí',
+            '60 trpaslíků',
+            '50 ještěřanů',
+            '10 odpalovacích pozic',
+            '20ranný akumulační zásobník',
+            'rezervni-posadka/galactic-map-oskn-helios.webp',
+            'rezervni-posadka/custodes-med-b4.webp',
+            'rezervni-posadka/vampirus-survivors.png'
+          ]
+          for s in required:
+              assert s in text, 'Missing: '+s
+          assert '/assets/' not in text
+          out='deploy/site-final-production-press-gallery.html'
+          open(out,'wb').write(body)
+          print('HTML_BYTES',len(body))
+          PY
+      - name: Commit exact production HTML
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/site-final-production-press-gallery.html
+          git commit -m "Stage final production press gallery HTML" || exit 0
+          git push
