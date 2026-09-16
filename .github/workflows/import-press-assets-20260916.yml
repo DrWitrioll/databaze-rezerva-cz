@@ -1,8 +1,0 @@
-name: Import press assets 2026-09-16
-on:
-  workflow_dispatch:
-jobs:
-  noop:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Press assets already imported"
