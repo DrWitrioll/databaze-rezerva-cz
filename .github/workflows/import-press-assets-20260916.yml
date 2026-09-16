@@ -1,0 +1,66 @@
+name: Import press assets 2026-09-16
+on:
+  push:
+    branches: [press-gallery-20260916-v2]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when assets already exist
+        id: check
+        run: |
+          if [ -f assets/galactic-map-oskn-helios.png ] && [ -f assets/custodes-med-b4.png ]; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Download temporary bundle
+        if: steps.check.outputs.done != 'true'
+        run: |
+          python - <<'PY'
+          import urllib.request, json
+          api='https://api.firestorage.ai/prod/file'
+          share='D8sZz6jzAfUj'
+          with urllib.request.urlopen(f'{api}/shares/{share}/files?maxResults=1000') as r:
+              listing=json.loads(r.read().decode('utf-8'))
+          files=listing.get('files') or []
+          if not files:
+              raise SystemExit('No files in share')
+          target=None
+          for f in files:
+              if f.get('fileName')=='map-custodes-assets.zip' or f.get('name')=='map-custodes-assets.zip':
+                  target=f; break
+          if target is None:
+              target=files[0]
+          fid=target.get('fileId') or target.get('id')
+          endpoint=f"{api}/shares/{share}/files/{fid}/download"
+          req=urllib.request.Request(endpoint,method='POST')
+          with urllib.request.urlopen(req) as r:
+              obj=json.loads(r.read().decode('utf-8'))
+          with urllib.request.urlopen(obj['downloadUrl']) as r:
+              body=r.read()
+          open('/tmp/press-assets.zip','wb').write(body)
+          print('ZIP_BYTES',len(body))
+          PY
+      - name: Unpack and rename assets
+        if: steps.check.outputs.done != 'true'
+        run: |
+          rm -rf /tmp/press-assets
+          mkdir -p /tmp/press-assets assets
+          unzip -q /tmp/press-assets.zip -d /tmp/press-assets
+          cp '/tmp/press-assets/ChatGPT Image 16. 9. 2026 08_27_39(1).png' assets/galactic-map-oskn-helios.png
+          cp '/tmp/press-assets/ChatGPT Image 16. 9. 2026 10_18_48.png' assets/custodes-med-b4.png
+          test -s assets/galactic-map-oskn-helios.png
+          test -s assets/custodes-med-b4.png
+      - name: Commit permanent assets
+        if: steps.check.outputs.done != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/galactic-map-oskn-helios.png assets/custodes-med-b4.png
+          git commit -m "Import galactic map and Custodes medical image"
+          git push
