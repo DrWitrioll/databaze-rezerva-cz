@@ -1,5 +1,5 @@
 {
-  "buildCommand": "python3 scripts/update_full_site_20260913.py && python3 scripts/add_three_images_20260913.py && python3 scripts/mark_owen_dead_20260913.py && python3 scripts/add_vampirus_article_20260913.py && python3 scripts/update_current_canon_20260916.py && python3 scripts/add_press_gallery_20260916.py",
+  "buildCommand": "mkdir -p dist && cp deploy/site-final-production-press-gallery.html dist/index.html",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "trailingSlash": false
