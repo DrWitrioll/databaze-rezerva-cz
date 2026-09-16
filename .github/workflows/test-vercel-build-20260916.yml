@@ -24,6 +24,6 @@ jobs:
           grep -q 'article-diplomacy-third' dist/index.html
           grep -q 'article-protos-singular' dist/index.html
           grep -q 'data-tab="pressgallery"' dist/index.html
-          test -s dist/assets/galactic-map-oskn-helios.png
-          test -s dist/assets/custodes-med-b4.png
+          test -s dist/assets/galactic-map-oskn-helios.webp
+          test -s dist/assets/custodes-med-b4.webp
           echo BUILD_VALIDATED
