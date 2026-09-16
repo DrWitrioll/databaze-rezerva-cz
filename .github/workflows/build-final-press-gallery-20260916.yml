@@ -1,0 +1,53 @@
+name: Build final press gallery 2026-09-16
+on:
+  push:
+    branches: [press-gallery-final-20260916]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run production build chain
+        run: |
+          python3 scripts/update_full_site_20260913.py
+          python3 scripts/add_three_images_20260913.py
+          python3 scripts/mark_owen_dead_20260913.py
+          python3 scripts/add_vampirus_article_20260913.py
+          python3 scripts/update_current_canon_20260916.py
+          python3 scripts/add_press_gallery_20260916.py
+      - name: Replace local image paths with Cloudinary production URLs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('dist/index.html')
+          s=p.read_text(encoding='utf-8')
+          repl={
+            '/assets/galactic-map-oskn-helios.webp':'https://res.cloudinary.com/emmgrwto/image/upload/v1789570761/rezervni-posadka/galactic-map-oskn-helios.webp',
+            '/assets/custodes-med-b4.webp':'https://res.cloudinary.com/emmgrwto/image/upload/v1789570778/rezervni-posadka/custodes-med-b4.webp',
+            '/assets/vampirus-survivors.png':'https://res.cloudinary.com/emmgrwto/image/upload/v1789570795/rezervni-posadka/vampirus-survivors.png',
+          }
+          for old,new in repl.items():
+              if old not in s:
+                  raise SystemExit(f'missing expected image path: {old}')
+              s=s.replace(old,new)
+          required=['article-galactic-map','article-custodes-med','article-diplomacy-third','article-protos-singular','data-tab="pressgallery"','id="pressgallery"','232 evidovaných / 230 fyzických','10 odpalovacích pozic','20ranný akumulační zásobník']
+          for marker in required:
+              if marker not in s:
+                  raise SystemExit(f'missing marker: {marker}')
+          if '/assets/' in s:
+              raise SystemExit('relative asset path remains')
+          out=Path('deploy/site-final-production-press-gallery.html')
+          out.parent.mkdir(parents=True,exist_ok=True)
+          out.write_text(s,encoding='utf-8')
+          print('FINAL_BYTES',out.stat().st_size)
+          PY
+      - name: Commit production HTML
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/site-final-production-press-gallery.html
+          git commit -m "Build final production press gallery HTML" || exit 0
+          git push
